@@ -301,6 +301,68 @@ class Fiber(Nodes):
         coords = coords + [random.uniform(*yx) for yx in zip(*pos)]
         return coords
 
+    def fatten(self, fattening):
+        """
+        Fattens the Fiber in the direction perpendicular to its legnth
+        :return:
+        """
+        if len(self.angles) == len(self.nodes_position):
+            print("yes!")
+        else:
+            print("no")
+        self.fattening_positions = []
+        self.min_fattening_positions, self.max_fattening_positions = [], []
+        for angle, node in zip(self.angles, self.nodes_position):
+            fattening_direction = angle + math.pi/2
+            fattening_row_lims = (node[0] + fattening * numpy.sin(fattening_direction),
+                                  node[0] - fattening * numpy.sin(fattening_direction))
+            fattening_col_lims = (node[1] + fattening * numpy.cos(fattening_direction),
+                                  node[1] - fattening * numpy.cos(fattening_direction))
+            fattening_row_lims = [numpy.min(fattening_row_lims), numpy.max(fattening_row_lims)]
+            fattening_col_lims = [numpy.min(fattening_col_lims), numpy.max(fattening_col_lims)]
+            self.fattening_positions.append((fattening_row_lims, fattening_col_lims))
+            # if fattening_row_lims[0] < 0:
+            #     fattening_row_lims[0] = 0
+            # elif fattening_row_lims[0] >= image.shape[0]:
+            #     fattening_row_lims[0] = image.shape[0] - 1
+            # if fattening_row_lims[1] < 0:
+            #     fattening_row_lims[1] = 0
+            # elif fattening_row_lims[1] >= image.shape[0]:
+            #     fattening_row_lims[1] = image.shape[0] - 1
+            # if fattening_col_lims[0] < 0:
+            #     fattening_col_lims[0] = 0
+            # elif fattening_col_lims[0] >= image.shape[1]:
+            #     fattening_col_lims[0] = image.shape[1] - 1
+            # if fattening_col_lims[1] < 0:
+            #     fattening_col_lims[1] = 0
+            # elif fattening_col_lims[1] >= image.shape[1]:
+            #     fattening_col_lims[1] = image.shape[1] - 1
+            self.min_fattening_positions.append((fattening_row_lims[0], fattening_col_lims[0]))
+            self.max_fattening_positions.append((fattening_row_lims[1], fattening_col_lims[1]))
+
+        self.min_fattening_positions = numpy.array(self.min_fattening_positions)
+        self.max_fattening_positions = numpy.array(self.max_fattening_positions)
+
+    def fatten_simple(self, fattening):
+        """
+        idfk
+        :param fattening:
+        :return:
+        """
+        show = numpy.zeros((64, 64))
+        self.min_fat, self.max_fat = [], []
+        coords = self.nodes_position.astype(int)
+        for node in coords:
+            min_fat_row, min_fat_col = node[0] - fattening, node[1] - fattening
+            max_fat_row, max_fat_col = node[0] + fattening, node[1] + fattening
+            self.min_fat.append((min_fat_row, min_fat_col))
+            self.max_fat.append((max_fat_row, max_fat_col))
+
+        self.min_fat = numpy.array(self.min_fat)
+        self.max_fat = numpy.array(self.max_fat)
+
+
+
     def grow(self, prob=0.5, angle=(-math.pi/8, math.pi/8), scale=(2, 3)):
         """
         This methods implements the growth of a `Fiber`
@@ -351,7 +413,12 @@ class Fiber(Nodes):
 
         # This code is now implemented in cython, but not much faster
         rows, cols = [], []
+        pts_to_plot, idx_dict = [], {}
+        idx = 0
         for i in range(len(coords) - 1):
+            pts_to_plot.append((coords[i][0], coords[i][1]))
+            idx_dict[idx] = "main"
+            idx += 1
             r0, c0 = coords[i]
             r1, c1 = coords[i + 1]
             if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
@@ -359,6 +426,95 @@ class Fiber(Nodes):
                 rr, cc = draw.line(r0, c0, r1, c1)
                 rows.extend(rr)
                 cols.extend(cc)
+
+                # this fattens the fiber :)
+                # if hasattr(self, 'fattening_positions'):
+                #     row_min = int(numpy.round(self.fattening_positions[i][0][0]))
+                #     row_max = int(numpy.round(self.fattening_positions[i][0][1]))
+                #     col_min = int(numpy.round(self.fattening_positions[i][1][0]))
+                #     col_max = int(numpy.round(self.fattening_positions[i][1][1]))
+                #     # this wont work if the shape is not symmetrical
+                #     limits = [row_min, row_max, col_min, col_max]
+                #     for i in range(len(limits)):
+                #         if limits[i] < 0:
+                #             limits[i] = 0
+                #         if limits[i] > shape[0]:
+                #             limits[i] = shape[0]
+                #     pts_to_plot.append((limits[0], limits[2]))
+                #     idx_dict[idx] = "fat"
+                #     idx += 1
+                #     pts_to_plot.append((limits[1], limits[3]))
+                #     idx_dict[idx] = "fat"
+                #     idx += 1
+                #     rr, cc = draw.line(limits[0], limits[2], limits[1], limits[3])
+                #     rows.extend(rr)
+                #     cols.extend(cc)
+
+        # test_array = numpy.zeros(shape)
+        # for i, (row, col) in enumerate(pts_to_plot):
+        #     if 0 <= row < shape[0]:
+        #         if 0 <= col < shape[1]:
+        #             if idx_dict[i] == "main":
+        #                 test_array[row, col] = 10
+        #             elif idx_dict[i] == "fat":
+        #                 test_array[row, col] = 1
+        # pyplot.imshow(test_array)
+        # pyplot.show()
+
+        if hasattr(self, 'min_fat'):
+            outline_min_rows, outline_min_cols = [], []
+            coords_min_fat = self.min_fat.astype(int)
+            for i in range(len(coords_min_fat) - 1):
+                r0, c0 = coords_min_fat[i]
+                r1, c1 = coords_min_fat[i + 1]
+                if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
+                        (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
+                    rr, cc = draw.line(r0, c0, r1, c1)
+                    rows.extend(rr)
+                    outline_min_rows.extend(rr)
+                    cols.extend(cc)
+                    outline_min_cols.extend(cc)
+            outline_min_rows = numpy.array(outline_min_rows)
+            outline_min_cols = numpy.array(outline_min_cols)
+
+        if hasattr(self, 'max_fat'):
+            outline_max_rows, outline_max_cols = [], []
+            coords_max_fat = self.max_fat.astype(int)
+            for i in range(len(coords_max_fat) - 1):
+                r0, c0 = coords_max_fat[i]
+                r1, c1 = coords_max_fat[i + 1]
+                if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
+                        (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
+                    rr, cc = draw.line(r0, c0, r1, c1)
+                    rows.extend(rr)
+                    outline_max_rows.extend(rr)
+                    cols.extend(cc)
+                    outline_max_cols.extend(cc)
+            outline_max_rows = numpy.array(outline_max_rows)
+            outline_max_cols = numpy.array(outline_max_cols)
+
+        if hasattr(self, 'min_fat') and hasattr(self, 'max_fat'):
+            coords_min_fat = self.min_fat.astype(int)
+            coords_max_fat = self.max_fat.astype(int)
+            for i in range(len(coords_max_fat) - 1):
+                if (0 <= coords_min_fat[i][0] < shape[0]) & (0 <= coords_min_fat[i][1] < shape[1]) & \
+                        (0 <= coords_max_fat[i][0] < shape[0]) & (0 <= coords_max_fat[i][1] < shape[1]):
+                    rr, cc = draw.line(coords_min_fat[i][0], coords_min_fat[i][1],
+                                       coords_max_fat[i][0], coords_max_fat[i][1])
+                    rows.extend(rr)
+                    cols.extend(cc)
+
+        # if hasattr(self, 'min_fat') and hasattr(self, 'max_fat'):
+        #     print(len(outline_max_cols), len(outline_min_cols), len(outline_max_rows), len(outline_min_rows))
+        #     for i in range(len(outline_max_cols)):
+        #         if (0 <= outline_min_rows[i] < shape[0]) & (0 <= outline_min_cols[i] < shape[1]) & \
+        #                 (0 <= outline_max_rows[i] < shape[0]) & (0 <= outline_max_cols[i] < shape[1]):
+        #             rr, cc = draw.line(outline_min_rows[i], outline_min_cols[i],
+        #                                outline_max_rows[i], outline_max_cols[i])
+        #             rows.extend(rr)
+        #             cols.extend(cc)
+
+
         return numpy.array(rows), numpy.array(cols)
 
         # lines = numpy.stack(_draw._multiple_lines(coords), axis=1)
