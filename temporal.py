@@ -6,6 +6,7 @@ from matplotlib import pyplot
 from skimage import draw, measure, io
 from scipy import spatial
 from tqdm import trange
+from scipy.ndimage.morphology import binary_fill_holes
 
 # from pysted import _draw
 
@@ -349,6 +350,7 @@ class Fiber(Nodes):
         :param fattening:
         :return:
         """
+        self.fattening = fattening
         show = numpy.zeros((64, 64))
         self.min_fat, self.max_fat = [], []
         coords = self.nodes_position.astype(int)
@@ -471,11 +473,11 @@ class Fiber(Nodes):
                         (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
                     rr, cc = draw.line(r0, c0, r1, c1)
                     rows.extend(rr)
-                    outline_min_rows.extend(rr)
+                    # outline_min_rows.extend(rr)
                     cols.extend(cc)
-                    outline_min_cols.extend(cc)
-            outline_min_rows = numpy.array(outline_min_rows)
-            outline_min_cols = numpy.array(outline_min_cols)
+                    # outline_min_cols.extend(cc)
+            # outline_min_rows = numpy.array(outline_min_rows)
+            # outline_min_cols = numpy.array(outline_min_cols)
 
         if hasattr(self, 'max_fat'):
             outline_max_rows, outline_max_cols = [], []
@@ -487,11 +489,11 @@ class Fiber(Nodes):
                         (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
                     rr, cc = draw.line(r0, c0, r1, c1)
                     rows.extend(rr)
-                    outline_max_rows.extend(rr)
+                    # outline_max_rows.extend(rr)
                     cols.extend(cc)
-                    outline_max_cols.extend(cc)
-            outline_max_rows = numpy.array(outline_max_rows)
-            outline_max_cols = numpy.array(outline_max_cols)
+                    # outline_max_cols.extend(cc)
+            # outline_max_rows = numpy.array(outline_max_rows)
+            # outline_max_cols = numpy.array(outline_max_cols)
 
         if hasattr(self, 'min_fat') and hasattr(self, 'max_fat'):
             coords_min_fat = self.min_fat.astype(int)
@@ -727,7 +729,41 @@ class Ensemble:
         # TODO: Change the value on the image depending on the current bleaching
         for i, obj in enumerate(self.objects):
             rr, cc = obj.return_shape(shape=image.shape)
-            image[rr.astype(int), cc.astype(int)] = 5
+            image[rr.astype(int), cc.astype(int)] = 1
+            if hasattr(obj, 'fattening'):
+                image = binary_fill_holes(image).astype(int)
+
+                # les bordures font chier
+                image[:, 0] = 1
+                image = binary_fill_holes(image).astype(int)
+                image[:, 0] = 0
+
+                image[:, image.shape[1] - 1] = 1
+                image = binary_fill_holes(image).astype(int)
+                image[:, image.shape[1] - 1] = 0
+
+                image[0, :] = 1
+                image = binary_fill_holes(image).astype(int)
+                image[0, :] = 0
+
+                image[image.shape[0] - 1, :] = 1
+                image = binary_fill_holes(image).astype(int)
+                image[image.shape[0] - 1, :] = 0
+
+            # if hasattr(obj, 'min_fat'):
+            #     for row, col in zip(rr.astype(int), cc.astype(int)):
+            #         if numpy.any(image[row, col+1:]):
+            #             # input(numpy.argwhere(image[row, col:]))
+            #             for col_i in numpy.argwhere(image[row, col:]):
+            #                 image[row, col: col + col_i[0]] = 5
+            #         if numpy.any(image[row+1:, col]):
+            #             for row_i in numpy.argwhere(image[row:, col]):
+            #                 image[row: row + row_i[0], col] = 5
+        # this is only for debugging / figuring how to fill
+        # for i, obj in enumerate(self.objects):
+        #     rr, cc = obj.return_shape(shape=image.shape)
+        #     image[rr.astype(int), cc.astype(int)] = 2
+
 
         return image
 
