@@ -7,6 +7,7 @@ from skimage import draw, measure, io
 from scipy import spatial
 from tqdm import trange
 from scipy.ndimage.morphology import binary_fill_holes
+from scipy.spatial import ConvexHull
 
 # from pysted import _draw
 
@@ -363,6 +364,26 @@ class Fiber(Nodes):
         self.min_fat = numpy.array(self.min_fat)
         self.max_fat = numpy.array(self.max_fat)
 
+    def fatten_simple2(self, fattening, image_shape):
+        """
+        holy shit jvais tuer qqun
+        :param fattening:
+        :return:
+        """
+        self.fattening = fattening
+        self.min_fat, self.max_fat = [], []
+        coords = self.nodes_position.astype(int)
+        for node in coords:
+            if (0 <= node[0] < image_shape[0]) & (0 <= node[1] < image_shape[1]):
+                min_fat_row, min_fat_col = node[0] - fattening, node[1] - fattening
+                max_fat_row, max_fat_col = node[0] + fattening, node[1] + fattening
+                if (0 <= min_fat_row < image_shape[0]) & (0 <= min_fat_col < image_shape[1]):
+                    self.min_fat.append((min_fat_row, min_fat_col))
+                if (0 <= max_fat_row < image_shape[0]) & (0 <= max_fat_col < image_shape[1]):
+                    self.max_fat.append((max_fat_row, max_fat_col))
+        self.min_fat = numpy.array(self.min_fat)
+        self.max_fat = numpy.array(self.max_fat)
+
 
 
     def grow(self, prob=0.5, angle=(-math.pi/8, math.pi/8), scale=(2, 3)):
@@ -414,20 +435,34 @@ class Fiber(Nodes):
         # coords = coords[numpy.all(keep, axis=1)]
 
         # This code is now implemented in cython, but not much faster
-        rows, cols = [], []
-        pts_to_plot, idx_dict = [], {}
-        idx = 0
-        for i in range(len(coords) - 1):
-            pts_to_plot.append((coords[i][0], coords[i][1]))
-            idx_dict[idx] = "main"
-            idx += 1
-            r0, c0 = coords[i]
-            r1, c1 = coords[i + 1]
-            if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
-               (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
-                rr, cc = draw.line(r0, c0, r1, c1)
-                rows.extend(rr)
-                cols.extend(cc)
+        if hasattr(self, 'fattening'):
+            print("osti de caliss!!")
+            all_points = numpy.vstack((self.min_fat, self.max_fat))
+            hull = ConvexHull(points=all_points, qhull_options='QG4')
+            img = numpy.zeros((64, 64))
+            for row, col in all_points:
+                img[row, col] += 1
+            pyplot.imshow(img)
+            pyplot.plot(all_points[hull.vertices, 1], all_points[hull.vertices, 0], 'r--', lw=2)
+            pyplot.plot(all_points[hull.vertices[0], 1], all_points[hull.vertices[0], 0], 'ro')
+            pyplot.show()
+            print(hull.vertices)
+            exit()
+        else:
+            rows, cols = [], []
+            pts_to_plot, idx_dict = [], {}
+            idx = 0
+            for i in range(len(coords) - 1):
+                pts_to_plot.append((coords[i][0], coords[i][1]))
+                idx_dict[idx] = "main"
+                idx += 1
+                r0, c0 = coords[i]
+                r1, c1 = coords[i + 1]
+                if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
+                   (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
+                    rr, cc = draw.line(r0, c0, r1, c1)
+                    rows.extend(rr)
+                    cols.extend(cc)
 
                 # this fattens the fiber :)
                 # if hasattr(self, 'fattening_positions'):
@@ -463,48 +498,48 @@ class Fiber(Nodes):
         # pyplot.imshow(test_array)
         # pyplot.show()
 
-        if hasattr(self, 'min_fat'):
-            outline_min_rows, outline_min_cols = [], []
-            coords_min_fat = self.min_fat.astype(int)
-            for i in range(len(coords_min_fat) - 1):
-                r0, c0 = coords_min_fat[i]
-                r1, c1 = coords_min_fat[i + 1]
-                if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
-                        (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
-                    rr, cc = draw.line(r0, c0, r1, c1)
-                    rows.extend(rr)
-                    # outline_min_rows.extend(rr)
-                    cols.extend(cc)
-                    # outline_min_cols.extend(cc)
-            # outline_min_rows = numpy.array(outline_min_rows)
-            # outline_min_cols = numpy.array(outline_min_cols)
+        # if hasattr(self, 'min_fat'):
+        #     outline_min_rows, outline_min_cols = [], []
+        #     coords_min_fat = self.min_fat.astype(int)
+        #     for i in range(len(coords_min_fat) - 1):
+        #         r0, c0 = coords_min_fat[i]
+        #         r1, c1 = coords_min_fat[i + 1]
+        #         if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
+        #                 (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
+        #             rr, cc = draw.line(r0, c0, r1, c1)
+        #             rows.extend(rr)
+        #             # outline_min_rows.extend(rr)
+        #             cols.extend(cc)
+        #             # outline_min_cols.extend(cc)
+        #     # outline_min_rows = numpy.array(outline_min_rows)
+        #     # outline_min_cols = numpy.array(outline_min_cols)
 
-        if hasattr(self, 'max_fat'):
-            outline_max_rows, outline_max_cols = [], []
-            coords_max_fat = self.max_fat.astype(int)
-            for i in range(len(coords_max_fat) - 1):
-                r0, c0 = coords_max_fat[i]
-                r1, c1 = coords_max_fat[i + 1]
-                if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
-                        (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
-                    rr, cc = draw.line(r0, c0, r1, c1)
-                    rows.extend(rr)
-                    # outline_max_rows.extend(rr)
-                    cols.extend(cc)
+        # if hasattr(self, 'max_fat'):
+        #     outline_max_rows, outline_max_cols = [], []
+        #     coords_max_fat = self.max_fat.astype(int)
+        #     for i in range(len(coords_max_fat) - 1):
+        #         r0, c0 = coords_max_fat[i]
+        #         r1, c1 = coords_max_fat[i + 1]
+        #         if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
+        #                 (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
+        #             rr, cc = draw.line(r0, c0, r1, c1)
+        #             rows.extend(rr)
+        #             # outline_max_rows.extend(rr)
+        #             cols.extend(cc)
                     # outline_max_cols.extend(cc)
             # outline_max_rows = numpy.array(outline_max_rows)
-            # outline_max_cols = numpy.array(outline_max_cols)
-
-        if hasattr(self, 'min_fat') and hasattr(self, 'max_fat'):
-            coords_min_fat = self.min_fat.astype(int)
-            coords_max_fat = self.max_fat.astype(int)
-            for i in range(len(coords_max_fat) - 1):
-                if (0 <= coords_min_fat[i][0] < shape[0]) & (0 <= coords_min_fat[i][1] < shape[1]) & \
-                        (0 <= coords_max_fat[i][0] < shape[0]) & (0 <= coords_max_fat[i][1] < shape[1]):
-                    rr, cc = draw.line(coords_min_fat[i][0], coords_min_fat[i][1],
-                                       coords_max_fat[i][0], coords_max_fat[i][1])
-                    rows.extend(rr)
-                    cols.extend(cc)
+        #     # outline_max_cols = numpy.array(outline_max_cols)
+        #
+        # if hasattr(self, 'min_fat') and hasattr(self, 'max_fat'):
+        #     coords_min_fat = self.min_fat.astype(int)
+        #     coords_max_fat = self.max_fat.astype(int)
+        #     for i in range(len(coords_max_fat) - 1):
+        #         if (0 <= coords_min_fat[i][0] < shape[0]) & (0 <= coords_min_fat[i][1] < shape[1]) & \
+        #                 (0 <= coords_max_fat[i][0] < shape[0]) & (0 <= coords_max_fat[i][1] < shape[1]):
+        #             rr, cc = draw.line(coords_min_fat[i][0], coords_min_fat[i][1],
+        #                                coords_max_fat[i][0], coords_max_fat[i][1])
+        #             rows.extend(rr)
+        #             cols.extend(cc)
 
         # if hasattr(self, 'min_fat') and hasattr(self, 'max_fat'):
         #     print(len(outline_max_cols), len(outline_min_cols), len(outline_max_rows), len(outline_min_rows))

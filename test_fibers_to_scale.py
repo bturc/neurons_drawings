@@ -13,7 +13,7 @@ print("test!")
 fibre_rand = temporal.Fiber(random_params={"num_points": (min_nodes, max_nodes),
                                                "pos": [np.zeros((1, 2)) + min_array,
                                                        image.shape - max_array],
-                                               "scale": (1, 5)}, seed=None)
+                                               "scale": (1, 5)}, seed=seed)
 roi = ((0, 0), image.shape)
 ensemble = temporal.Ensemble(roi=roi)
 ensemble.append(fibre_rand)
@@ -21,7 +21,7 @@ ensemble.append(fibre_rand)
 unfattened = ensemble.return_frame()
 
 # fibre_rand.fatten(10)
-fibre_rand.fatten_simple(3)
+fibre_rand.fatten_simple2(5, (frame_shape, frame_shape))
 # exit()
 
 fattened = ensemble.return_frame()
