@@ -365,6 +365,95 @@ class Fiber(Nodes):
         # # Keeps only valid lines
         # return lines[numpy.all((lines >= [0, 0]) & (lines < shape), axis=1)].T
 
+    def fatten(self, shape=None, n_fatten=1):
+        """
+        ???
+        """
+        rows, cols = self.return_shape(shape)
+        img = numpy.zeros(shape)
+        img[rows, cols] = 1
+        n_fatten_completed = 0
+        outskirts_pos = []
+        outskirts_iter_dir = {0: outskirts_pos}
+        for row, col in zip(rows, cols):
+            added_left, added_right, added_top, added_bot = False, False, False, False
+            if (0 <= row - 1 < shape[0]) and (img[row - 1, col] != 1):
+                img[row - 1, col] = 1
+                added_top = True
+                outskirts_pos.append((row - 1, col))
+            if (0 <= row + 1 < shape[0]) and (img[row + 1, col] != 1):
+                img[row + 1, col] = 1
+                added_bot = True
+                outskirts_pos.append((row + 1, col))
+            if (0 <= col - 1 < shape[1]) and (img[row, col - 1] != 1):
+                img[row, col - 1] = 1
+                added_left = True
+                outskirts_pos.append((row, col - 1))
+            if (0 <= col + 1 < shape[1]) and (img[row, col + 1] != 1):
+                img[row, col + 1] = 1
+                added_right = True
+                outskirts_pos.append((row, col + 1))
+            # does the corners too, think I prefer it without the corners tho
+            # if (img[row - 1, col - 1] != 1) & (0 <= row - 1 < shape[0]) & (0 <= col - 1 < shape[1]):
+            #     img[row - 1, col - 1] = 1
+            # if (img[row - 1, col + 1] != 1) & (0 <= row - 1 < shape[0]) & (0 <= col + 1 < shape[1]):
+            #     img[row - 1, col + 1] = 1
+            # if (img[row + 1, col - 1] != 1) & (0 <= row + 1 < shape[0]) & (0 <= col - 1 < shape[1]):
+            #     img[row + 1, col - 1] = 1
+            # if (img[row + 1, col + 1] != 1) & (0 <= row + 1 < shape[0]) & (0 <= col + 1 < shape[1]):
+            #     img[row + 1, col + 1] = 1
+            # Here I would like to change the nodes positions so they are on the outskirts of the fattenened fiber, hmm
+            if (row, col) in self.nodes_position:
+                if added_top:
+                    pass
+        n_fatten_completed += 1
+        pyplot.imshow(img)
+        pyplot.title(f"n_fatten_completed = {n_fatten_completed}")
+        pyplot.show()
+
+        if n_fatten > 1:
+            while n_fatten_completed != n_fatten:
+                print(f"n_fatten_completed = {n_fatten_completed}")
+                if n_fatten_completed == 1:
+                    outskirts_iter_dir[n_fatten_completed] = []
+                    for row, col in outskirts_iter_dir[n_fatten_completed - 1]:
+                        if (0 <= row - 1 < shape[0]) and (img[row - 1, col] != 1):
+                            img[row - 1, col] = 1
+                            outskirts_iter_dir[n_fatten_completed].append((row - 1, col))
+                        if (0 <= row + 1 < shape[0]) and (img[row + 1, col] != 1):
+                            img[row + 1, col] = 1
+                            outskirts_iter_dir[n_fatten_completed].append((row + 1, col))
+                        if (0 <= col - 1 < shape[1]) and (img[row, col - 1] != 1):
+                            img[row, col - 1] = 1
+                            outskirts_iter_dir[n_fatten_completed].append((row, col - 1))
+                        if (0 <= col + 1 < shape[1]) and (img[row, col + 1] != 1):
+                            img[row, col + 1] = 1
+                            outskirts_iter_dir[n_fatten_completed].append((row, col + 1))
+
+                else:
+                    outskirts_iter_dir[n_fatten_completed] = []
+                    for row, col in outskirts_iter_dir[n_fatten_completed - 1]:
+                        if (0 <= row - 1 < shape[0]) and (img[row - 1, col] != 1):
+                            img[row - 1, col] = 1
+                            outskirts_iter_dir[n_fatten_completed].append((row - 1, col))
+                        if (0 <= row + 1 < shape[0]) and (img[row + 1, col] != 1):
+                            img[row + 1, col] = 1
+                            outskirts_iter_dir[n_fatten_completed].append((row + 1, col))
+                        if (0 <= col - 1 < shape[1]) and (img[row, col - 1] != 1):
+                            img[row, col - 1] = 1
+                            outskirts_iter_dir[n_fatten_completed].append((row, col - 1))
+                        if (0 <= col + 1 < shape[1]) and (img[row, col + 1] != 1):
+                            img[row, col + 1] = 1
+                            outskirts_iter_dir[n_fatten_completed].append((row, col + 1))
+                n_fatten_completed += 1
+                pyplot.imshow(img)
+                pyplot.title(f"n_fatten_completed = {n_fatten_completed}")
+                pyplot.show()
+
+
+
+
+
     def _grow_head(self, angle, scale):
         """
         Implements the growth of the head of the `Fiber`
