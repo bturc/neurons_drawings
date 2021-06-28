@@ -377,7 +377,10 @@ class Fiber(Nodes):
     def fatten(self, base_pos, shape=None, n_fatten=1):
         """
         Fattens the base fiber n_fatten times. 1 fattening step means 1 molecule is added to every empty pixel on the
-        perimeter of the fiber
+        perimeter of the fiber.
+        :param base_pos: The base positions of the fiber before fattening
+        :param shape: The shape of the image
+        :param n_fatten: The number of times we wish to fatten along the perimeter
         """
         fattened_rows, fattened_cols = [], []
         rows, cols = base_pos[:, 0], base_pos[:, 1]
