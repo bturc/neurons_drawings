@@ -20,6 +20,20 @@ rows, cols = fibre_rand.return_shape(image.shape)
 image[rows, cols] = 1
 
 plt.imshow(image)
+plt.title(f"before fattening")
 plt.show()
 
-fibre_rand.fatten(image.shape, n_fatten=5)
+base_rows, base_cols = fibre_rand.return_shape(image.shape)
+base_pos = np.stack((base_rows, base_cols), axis=-1)
+
+fibre_rand.fatten(base_pos, image.shape, n_fatten=5)
+
+roi = ((0, 0), image.shape)
+ensemble = temporal.Ensemble(roi=roi)
+ensemble.append(fibre_rand)
+
+xd = ensemble.return_frame()
+
+plt.imshow(xd)
+plt.title(f"Ensemble")
+plt.show()

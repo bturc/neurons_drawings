@@ -344,55 +344,71 @@ class Fiber(Nodes):
         :returns : A `numpy.ndarray` of row coords
                    A `numpy.ndarray` of col coords
         """
-        coords = self.nodes_position.astype(int)
-        # coords = measure.subdivide_polygon(self.nodes_position, degree=2, preserve_ends=True).astype(int)
-        # keep = (coords >= 0) & (coords < numpy.array(shape)[numpy.newaxis, :])
-        # coords = coords[numpy.all(keep, axis=1)]
 
-        # This code is now implemented in cython, but not much faster
-        rows, cols = [], []
-        for i in range(len(coords) - 1):
-            r0, c0 = coords[i]
-            r1, c1 = coords[i + 1]
-            if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
-               (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
-                rr, cc = draw.line(r0, c0, r1, c1)
-                rows.extend(rr)
-                cols.extend(cc)
-        return numpy.array(rows), numpy.array(cols)
+        if hasattr(self, 'fattened'):
+            coords = self.fattened_pos.astype(int)
+            rows, cols = coords[:, 0], coords[:, 1]
+            print(coords.shape)
+            print(rows.shape, cols.shape)
+            return numpy.array(rows), numpy.array(cols)
+        else:
+
+            coords = self.nodes_position.astype(int)
+            # coords = measure.subdivide_polygon(self.nodes_position, degree=2, preserve_ends=True).astype(int)
+            # keep = (coords >= 0) & (coords < numpy.array(shape)[numpy.newaxis, :])
+            # coords = coords[numpy.all(keep, axis=1)]
+
+            # This code is now implemented in cython, but not much faster
+            rows, cols = [], []
+            for i in range(len(coords) - 1):
+                r0, c0 = coords[i]
+                r1, c1 = coords[i + 1]
+                if (0 <= r0 < shape[0]) & (0 <= c0 < shape[1]) & \
+                   (0 <= r1 < shape[0]) & (0 <= c1 < shape[1]):
+                    rr, cc = draw.line(r0, c0, r1, c1)
+                    rows.extend(rr)
+                    cols.extend(cc)
+            return numpy.array(rows), numpy.array(cols)
 
         # lines = numpy.stack(_draw._multiple_lines(coords), axis=1)
         # # Keeps only valid lines
         # return lines[numpy.all((lines >= [0, 0]) & (lines < shape), axis=1)].T
 
-    def fatten(self, shape=None, n_fatten=1):
+    def fatten(self, base_pos, shape=None, n_fatten=1):
         """
-        ???
+        Fattens the base fiber n_fatten times. 1 fattening step means 1 molecule is added to every empty pixel on the
+        perimeter of the fiber
         """
-        rows, cols = self.return_shape(shape)
+        fattened_rows, fattened_cols = [], []
+        rows, cols = base_pos[:, 0], base_pos[:, 1]
+        fattened_rows.extend(rows)
+        fattened_cols.extend(cols)
         img = numpy.zeros(shape)
         img[rows, cols] = 1
         n_fatten_completed = 0
         outskirts_pos = []
         outskirts_iter_dir = {0: outskirts_pos}
         for row, col in zip(rows, cols):
-            added_left, added_right, added_top, added_bot = False, False, False, False
             if (0 <= row - 1 < shape[0]) and (img[row - 1, col] != 1):
                 img[row - 1, col] = 1
-                added_top = True
                 outskirts_pos.append((row - 1, col))
+                fattened_rows.append(row - 1)
+                fattened_cols.append(col)
             if (0 <= row + 1 < shape[0]) and (img[row + 1, col] != 1):
                 img[row + 1, col] = 1
-                added_bot = True
                 outskirts_pos.append((row + 1, col))
+                fattened_rows.append(row + 1)
+                fattened_cols.append(col)
             if (0 <= col - 1 < shape[1]) and (img[row, col - 1] != 1):
                 img[row, col - 1] = 1
-                added_left = True
                 outskirts_pos.append((row, col - 1))
+                fattened_rows.append(row)
+                fattened_cols.append(col - 1)
             if (0 <= col + 1 < shape[1]) and (img[row, col + 1] != 1):
                 img[row, col + 1] = 1
-                added_right = True
                 outskirts_pos.append((row, col + 1))
+                fattened_rows.append(row)
+                fattened_cols.append(col + 1)
             # does the corners too, think I prefer it without the corners tho
             # if (img[row - 1, col - 1] != 1) & (0 <= row - 1 < shape[0]) & (0 <= col - 1 < shape[1]):
             #     img[row - 1, col - 1] = 1
@@ -403,13 +419,7 @@ class Fiber(Nodes):
             # if (img[row + 1, col + 1] != 1) & (0 <= row + 1 < shape[0]) & (0 <= col + 1 < shape[1]):
             #     img[row + 1, col + 1] = 1
             # Here I would like to change the nodes positions so they are on the outskirts of the fattenened fiber, hmm
-            if (row, col) in self.nodes_position:
-                if added_top:
-                    pass
         n_fatten_completed += 1
-        pyplot.imshow(img)
-        pyplot.title(f"n_fatten_completed = {n_fatten_completed}")
-        pyplot.show()
 
         if n_fatten > 1:
             while n_fatten_completed != n_fatten:
@@ -420,15 +430,23 @@ class Fiber(Nodes):
                         if (0 <= row - 1 < shape[0]) and (img[row - 1, col] != 1):
                             img[row - 1, col] = 1
                             outskirts_iter_dir[n_fatten_completed].append((row - 1, col))
+                            fattened_rows.append(row - 1)
+                            fattened_cols.append(col)
                         if (0 <= row + 1 < shape[0]) and (img[row + 1, col] != 1):
                             img[row + 1, col] = 1
                             outskirts_iter_dir[n_fatten_completed].append((row + 1, col))
+                            fattened_rows.append(row + 1)
+                            fattened_cols.append(col)
                         if (0 <= col - 1 < shape[1]) and (img[row, col - 1] != 1):
                             img[row, col - 1] = 1
                             outskirts_iter_dir[n_fatten_completed].append((row, col - 1))
+                            fattened_rows.append(row)
+                            fattened_cols.append(col - 1)
                         if (0 <= col + 1 < shape[1]) and (img[row, col + 1] != 1):
                             img[row, col + 1] = 1
                             outskirts_iter_dir[n_fatten_completed].append((row, col + 1))
+                            fattened_rows.append(row)
+                            fattened_cols.append(col + 1)
 
                 else:
                     outskirts_iter_dir[n_fatten_completed] = []
@@ -436,19 +454,32 @@ class Fiber(Nodes):
                         if (0 <= row - 1 < shape[0]) and (img[row - 1, col] != 1):
                             img[row - 1, col] = 1
                             outskirts_iter_dir[n_fatten_completed].append((row - 1, col))
+                            fattened_rows.append(row - 1)
+                            fattened_cols.append(col)
                         if (0 <= row + 1 < shape[0]) and (img[row + 1, col] != 1):
                             img[row + 1, col] = 1
                             outskirts_iter_dir[n_fatten_completed].append((row + 1, col))
+                            fattened_rows.append(row + 1)
+                            fattened_cols.append(col)
                         if (0 <= col - 1 < shape[1]) and (img[row, col - 1] != 1):
                             img[row, col - 1] = 1
                             outskirts_iter_dir[n_fatten_completed].append((row, col - 1))
+                            fattened_rows.append(row)
+                            fattened_cols.append(col - 1)
                         if (0 <= col + 1 < shape[1]) and (img[row, col + 1] != 1):
                             img[row, col + 1] = 1
                             outskirts_iter_dir[n_fatten_completed].append((row, col + 1))
+                            fattened_rows.append(row)
+                            fattened_cols.append(col + 1)
                 n_fatten_completed += 1
-                pyplot.imshow(img)
-                pyplot.title(f"n_fatten_completed = {n_fatten_completed}")
-                pyplot.show()
+        pyplot.imshow(img)
+        pyplot.title(f"after fattening")
+        pyplot.show()
+
+        self.fattened = n_fatten_completed
+        self.fattened_pos = numpy.stack((numpy.array(fattened_rows), numpy.array(fattened_cols)), axis=-1)
+        print(self.fattened)
+        return self.fattened_pos
 
 
 
