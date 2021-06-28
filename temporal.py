@@ -348,8 +348,6 @@ class Fiber(Nodes):
         if hasattr(self, 'fattened'):
             coords = self.fattened_pos.astype(int)
             rows, cols = coords[:, 0], coords[:, 1]
-            print(coords.shape)
-            print(rows.shape, cols.shape)
             return numpy.array(rows), numpy.array(cols)
         else:
 
@@ -426,7 +424,6 @@ class Fiber(Nodes):
 
         if n_fatten > 1:
             while n_fatten_completed != n_fatten:
-                print(f"n_fatten_completed = {n_fatten_completed}")
                 if n_fatten_completed == 1:
                     outskirts_iter_dir[n_fatten_completed] = []
                     for row, col in outskirts_iter_dir[n_fatten_completed - 1]:
@@ -475,13 +472,9 @@ class Fiber(Nodes):
                             fattened_rows.append(row)
                             fattened_cols.append(col + 1)
                 n_fatten_completed += 1
-        pyplot.imshow(img)
-        pyplot.title(f"after fattening")
-        pyplot.show()
 
         self.fattened = n_fatten_completed
         self.fattened_pos = numpy.stack((numpy.array(fattened_rows), numpy.array(fattened_cols)), axis=-1)
-        print(self.fattened)
         return self.fattened_pos
 
 

@@ -167,3 +167,12 @@ def generate_synaptic_fibers(image_shape, main_nodes, n_sec_fibers, n_synapses, 
     # frame = ensemble_test.return_frame()
 
     return ensemble_test, synapses_lists
+
+
+def n_fatten_dpxsz_converter():
+    """
+    this func uses the datamap_pixelsize and the desired fiber width to figure out the number of times the fiber needs
+    to be fattened. The fiber is initially created with a width of 1 pixel which needs to be adjusted based on
+    :return:
+    """
+    pass
